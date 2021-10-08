@@ -66,6 +66,10 @@ class Model(object):
         """
 
         # TODO: Fit your model here
+
+        self.model.fit(train_x, train_y)
+        params = self.model.kernel_.get_params() # Returns tuned parameters after fitting the model
+
         pass
 
 
