@@ -71,7 +71,7 @@ class Model(object):
 
         # TODO: Fit your model here
 
-        self.model.fit(train_x[0:1000], train_y[0:1000]) #Just use the first 1000 datapoints to stay in complexity bounds
+        self.model.fit(train_x[0:2000], train_y[0:2000]) #Just use the first 1000 datapoints to stay in complexity bounds
         params = self.model.kernel_.get_params() # Returns tuned parameters after fitting the model
 
         pass
