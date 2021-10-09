@@ -11,7 +11,7 @@ from matplotlib import cm
 
 
 # Set `EXTENDED_EVALUATION` to `True` in order to visualize your predictions.
-EXTENDED_EVALUATION = False
+EXTENDED_EVALUATION = True
 EVALUATION_GRID_POINTS = 300  # Number of grid points used in extended evaluation
 EVALUATION_GRID_POINTS_3D = 50  # Number of points displayed in 3D during evaluation
 
@@ -36,8 +36,9 @@ class Model(object):
         We already provide a random number generator for reproducibility.
         """
         self.rng = np.random.default_rng(seed=0)
-
         # TODO: Add custom initialization for your model here if necessary
+        self.kernel = ConstantKernel(1.0, (1e-1, 1e3)) * RBF(10.0, (1e-3, 1e3))
+        self.model = GaussianProcessRegressor(kernel=self.kernel, n_restarts_optimizer=10, alpha=0.1, normalize_y=True)
 
     def predict(self, x: np.ndarray) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -49,11 +50,15 @@ class Model(object):
         """
 
         # TODO: Use your GP to estimate the posterior mean and stddev for each location here
-        gp_mean = np.zeros(x.shape[0], dtype=float)
-        gp_std = np.zeros(x.shape[0], dtype=float)
+        # gp_mean = np.zeros(x.shape[0], dtype=float)
+        # gp_std = np.zeros(x.shape[0], dtype=float)
+
+        gp_mean, gp_std = self.model.predict(X=x, return_std=True)
 
         # TODO: Use the GP posterior to form your predictions here
         predictions = gp_mean
+
+
 
         return predictions, gp_mean, gp_std
 
@@ -65,6 +70,10 @@ class Model(object):
         """
 
         # TODO: Fit your model here
+
+        self.model.fit(train_x[0:1000], train_y[0:1000]) #Just use the first 1000 datapoints to stay in complexity bounds
+        params = self.model.kernel_.get_params() # Returns tuned parameters after fitting the model
+
         pass
 
 
