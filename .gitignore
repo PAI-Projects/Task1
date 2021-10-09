@@ -130,3 +130,6 @@ dmypy.json
 
 #Pycharm
 .idea
+
+#ResultsCheckByte
+results_check.byte
