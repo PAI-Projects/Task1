@@ -6,12 +6,13 @@ import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import KFold
+from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
 
 # Set `EXTENDED_EVALUATION` to `True` in order to visualize your predictions.
-EXTENDED_EVALUATION = True
+EXTENDED_EVALUATION = False
 EVALUATION_GRID_POINTS = 300  # Number of grid points used in extended evaluation
 EVALUATION_GRID_POINTS_3D = 50  # Number of points displayed in 3D during evaluation
 
@@ -22,6 +23,11 @@ COST_W_NORMAL = 1.0
 COST_W_OVERPREDICT = 5.0
 COST_W_THRESHOLD = 20.0
 
+USE_THRESHOLD_HEURISTICS = True
+CONST_REDUCTION = 0.5
+INCREASE_AT_TRESHOLD = 4.5
+
+hand_in = True
 
 class Model(object):
     """
@@ -37,7 +43,8 @@ class Model(object):
         """
         self.rng = np.random.default_rng(seed=0)
         # TODO: Add custom initialization for your model here if necessary
-        self.kernel = ConstantKernel(1.0, (1e-1, 1e3)) * RBF(10.0, (1e-3, 1e3))
+        # self.kernel = ConstantKernel(1.0, (1e-1, 1e3)) * RBF(10.0, (1e-3, 1e3))
+        self.kernel = RBF(10.0, (1e-3, 1e3))
         self.model = GaussianProcessRegressor(kernel=self.kernel, n_restarts_optimizer=10, alpha=0.1, normalize_y=True)
 
     def predict(self, x: np.ndarray) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -56,9 +63,20 @@ class Model(object):
         gp_mean, gp_std = self.model.predict(X=x, return_std=True)
 
         # TODO: Use the GP posterior to form your predictions here
-        predictions = gp_mean
 
 
+        # Reduce all predictions below the mean to avoid overpredictions
+        weights = np.zeros_like(gp_mean)
+        if USE_THRESHOLD_HEURISTICS:
+            weights = weights - CONST_REDUCTION
+
+            # Values close to 35.5 threshold increase by some constant to avoid the penalty of 20
+            mask_1 = (INCREASE_AT_TRESHOLD >= THRESHOLD - gp_mean) & (THRESHOLD - gp_mean >= 0)
+            for idx, cur_mask_val in enumerate(mask_1):
+                if cur_mask_val:
+                    weights[idx] = THRESHOLD - gp_mean[idx]
+
+        predictions = gp_mean + weights
 
         return predictions, gp_mean, gp_std
 
@@ -71,8 +89,23 @@ class Model(object):
 
         # TODO: Fit your model here
 
-        self.model.fit(train_x[0:2000], train_y[0:2000]) #Just use the first 1000 datapoints to stay in complexity bounds
-        params = self.model.kernel_.get_params() # Returns tuned parameters after fitting the model
+        # Divider into training and evaluation set
+        if not hand_in:
+            X_train, X_test, y_train, y_test = train_test_split(train_x, train_y, test_size=0.2, random_state=42)
+
+
+            # Fit model
+            self.model.fit(X_train[0:2000], y_train[0:2000])
+            params = self.model.kernel_.get_params() # Returns tuned parameters after fitting the model
+
+            #Evaluate model
+            print("Nr. of datapoints for evaluation: " + str(len(X_test)))
+            predictions, gp_mean, gp_std = self.predict(X_test)
+            cost = cost_function(y_test, predictions)
+            print(cost)
+        else:
+            self.model.fit(train_x[0:2000], train_y[0:2000])
+            params = self.model.kernel_.get_params()  # Returns tuned parameters after fitting the model
 
         pass
 
@@ -93,10 +126,17 @@ def cost_function(y_true: np.ndarray, y_predicted: np.ndarray) -> float:
 
     # Case i): overprediction
     mask_1 = y_predicted > y_true
+    print("Nr. of overpredictions: " + str(np.count_nonzero(mask_1)))
     weights[mask_1] = COST_W_OVERPREDICT
 
     # Case ii): true is above threshold, prediction below
     mask_2 = (y_true >= THRESHOLD) & (y_predicted < THRESHOLD)
+    print("Nr. of falsly predicting below threshold: " + str(np.count_nonzero(mask_2)))
+    print("Case II Values: ", end='')
+    for idx, cur_mask_val in enumerate(mask_2):
+        if cur_mask_val:
+            print(str(y_predicted[idx]) + ", ", end='')
+    print("")
     weights[mask_2] = COST_W_THRESHOLD
 
     # Case iii): everything else
