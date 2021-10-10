@@ -45,8 +45,8 @@ class Model(object):
         self.rng = np.random.default_rng(seed=0)
         # TODO: Add custom initialization for your model here if necessary
         # self.kernel = ConstantKernel(1.0, (1e-1, 1e3)) * RBF(10.0, (1e-3, 1e3))
-        self.kernel = Matern(10.0) + WhiteKernel(noise_level=0.01)  # RBF(10.0, (1e-3, 1e3))
-        self.model = GaussianProcessRegressor(kernel=self.kernel, n_restarts_optimizer=1,
+        self.kernel = Matern(10.0, nu=1.5) + WhiteKernel(noise_level=0.01)  # RBF(10.0, (1e-3, 1e3))
+        self.model = GaussianProcessRegressor(kernel=self.kernel, n_restarts_optimizer=0,
                                               normalize_y=True)  # alpha=0.01,
 
     def predict(self, x: np.ndarray) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -88,7 +88,7 @@ class Model(object):
         :param train_y: Training pollution concentrations as a 1d NumPy float array of shape (NUM_SAMPLES,)
         """
 
-        nr_data_points = 6500
+        nr_data_points = 10000
 
         # Divider into training and evaluation set
         if not hand_in:
