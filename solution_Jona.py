@@ -73,11 +73,11 @@ class Model(object):
 
         self.gp = GaussianProcessRegressor(kernel=kernel, normalize_y=True)
 
-        self.feature_map_nystroem = Nystroem(kernel=kernel, n_components=2000)
+        self.feature_map_nystroem = Nystroem(kernel=kernel, n_components=2500)
 
         feature_matrix_x = self.feature_map_nystroem.fit_transform(train_x, train_y)
 
-        indices = np.random.choice(np.arange(feature_matrix_x.shape[0]), size=2000, replace=False)
+        indices = np.arange(2500)  # np.random.choice(np.arange(feature_matrix_x.shape[0]), size=2000, replace=False)
         feature_matrix_x_reduced = feature_matrix_x[indices]
         train_y_reduced = train_y[indices]
 
