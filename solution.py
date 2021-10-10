@@ -88,7 +88,7 @@ class Model(object):
         :param train_y: Training pollution concentrations as a 1d NumPy float array of shape (NUM_SAMPLES,)
         """
 
-        nr_data_points = 10000
+        nr_data_points = 15000
 
         # Divider into training and evaluation set
         if not hand_in:
