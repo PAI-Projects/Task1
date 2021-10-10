@@ -1,3 +1,4 @@
+import time
 import os
 import typing
 
@@ -11,12 +12,10 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
-
 # Set `EXTENDED_EVALUATION` to `True` in order to visualize your predictions.
 EXTENDED_EVALUATION = False
 EVALUATION_GRID_POINTS = 300  # Number of grid points used in extended evaluation
 EVALUATION_GRID_POINTS_3D = 50  # Number of points displayed in 3D during evaluation
-
 
 # Cost function constants
 THRESHOLD = 35.5
@@ -29,6 +28,7 @@ CONST_REDUCTION = 0.5
 INCREASE_AT_TRESHOLD = 4.5
 
 hand_in = True
+
 
 class Model(object):
     """
@@ -46,7 +46,8 @@ class Model(object):
         # TODO: Add custom initialization for your model here if necessary
         # self.kernel = ConstantKernel(1.0, (1e-1, 1e3)) * RBF(10.0, (1e-3, 1e3))
         self.kernel = Matern(10.0) + WhiteKernel(noise_level=0.01)  # RBF(10.0, (1e-3, 1e3))
-        self.model = GaussianProcessRegressor(kernel=self.kernel, n_restarts_optimizer=1, normalize_y=True)  # alpha=0.01,
+        self.model = GaussianProcessRegressor(kernel=self.kernel, n_restarts_optimizer=1,
+                                              normalize_y=True)  # alpha=0.01,
 
     def predict(self, x: np.ndarray) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -64,7 +65,6 @@ class Model(object):
         gp_mean, gp_std = self.model.predict(X=x, return_std=True)
 
         # TODO: Use the GP posterior to form your predictions here
-
 
         # Reduce all predictions below the mean to avoid overpredictions
         weights = np.zeros_like(gp_mean)
@@ -88,24 +88,28 @@ class Model(object):
         :param train_y: Training pollution concentrations as a 1d NumPy float array of shape (NUM_SAMPLES,)
         """
 
-        # TODO: Fit your model here
+        nr_data_points = 6500
 
         # Divider into training and evaluation set
         if not hand_in:
             X_train, X_test, y_train, y_test = train_test_split(train_x, train_y, test_size=0.2, random_state=42)
 
-
             # Fit model
-            self.model.fit(X_train[0:2000], y_train[0:2000])
-            params = self.model.kernel_.get_params() # Returns tuned parameters after fitting the model
+            self.model.fit(X_train[0:nr_data_points], y_train[0:nr_data_points])
+            params = self.model.kernel_.get_params()  # Returns tuned parameters after fitting the model
 
-            #Evaluate model
+            # Evaluate model
             print("Nr. of datapoints for evaluation: " + str(len(X_test)))
             predictions, gp_mean, gp_std = self.predict(X_test)
             cost = cost_function(y_test, predictions)
             print(cost)
         else:
-            self.model.fit(train_x[0:3500], train_y[0:3500])
+            start = time.time()
+            self.model.fit(train_x[0:nr_data_points], train_y[0:nr_data_points])
+            end = time.time()
+
+            print("Fitting time: %d [s]." % (end - start))
+
             params = self.model.kernel_.get_params()  # Returns tuned parameters after fitting the model
 
         print("GPML kernel: %s" % self.model.kernel_)
