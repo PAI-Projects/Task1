@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 
 # Set `EXTENDED_EVALUATION` to `True` in order to visualize your predictions.
-EXTENDED_EVALUATION = True
+EXTENDED_EVALUATION = False
 EVALUATION_GRID_POINTS = 300  # Number of grid points used in extended evaluation
 EVALUATION_GRID_POINTS_3D = 50  # Number of points displayed in 3D during evaluation
 
@@ -35,6 +35,7 @@ class Model(object):
         We already provide a random number generator for reproducibility.
         """
         self.rng = np.random.default_rng(seed=0)
+        np.random.seed(0)
 
         # TODO: Add custom initialization for your model here if necessary
 
@@ -68,17 +69,19 @@ class Model(object):
         """
 
         # TODO: Fit your model here
+        kernel = RBF(10.0, (1e-3, 1e3)) + WhiteKernel(noise_level=0.01)
 
-        kernel_gpml = RBF(length_scale=1.0, length_scale_bounds="fixed") * ConstantKernel(1.0, constant_value_bounds="fixed")
-        + WhiteKernel(noise_level=0.001)
+        self.gp = GaussianProcessRegressor(kernel=kernel, normalize_y=True)
 
-        self.gp = GaussianProcessRegressor(kernel=kernel_gpml, alpha=.010, optimizer=None, normalize_y=True)
+        self.feature_map_nystroem = Nystroem(kernel=kernel, n_components=2000)
 
-        self.feature_map_nystroem = Nystroem(gamma=.2, n_components=10)
+        feature_matrix_x = self.feature_map_nystroem.fit_transform(train_x, train_y)
 
-        data_transformed_x = self.feature_map_nystroem.fit_transform(train_x)
+        indices = np.random.choice(np.arange(feature_matrix_x.shape[0]), size=2000, replace=False)
+        feature_matrix_x_reduced = feature_matrix_x[indices]
+        train_y_reduced = train_y[indices]
 
-        self.gp.fit(data_transformed_x, train_y)
+        self.gp.fit(feature_matrix_x_reduced, train_y_reduced)
 
         print("GPML kernel: %s" % self.gp.kernel_)
         print("Log-marginal-likelihood: %.3f"
