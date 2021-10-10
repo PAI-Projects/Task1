@@ -4,6 +4,7 @@ import typing
 from sklearn.gaussian_process.kernels import *
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.kernel_approximation import Nystroem
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split
@@ -44,8 +45,8 @@ class Model(object):
         self.rng = np.random.default_rng(seed=0)
         # TODO: Add custom initialization for your model here if necessary
         # self.kernel = ConstantKernel(1.0, (1e-1, 1e3)) * RBF(10.0, (1e-3, 1e3))
-        self.kernel = RBF(10.0, (1e-3, 1e3))
-        self.model = GaussianProcessRegressor(kernel=self.kernel, n_restarts_optimizer=10, alpha=0.1, normalize_y=True)
+        self.kernel = Matern(10.0) + WhiteKernel(noise_level=0.01)  # RBF(10.0, (1e-3, 1e3))
+        self.model = GaussianProcessRegressor(kernel=self.kernel, n_restarts_optimizer=1, normalize_y=True)  # alpha=0.01,
 
     def predict(self, x: np.ndarray) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -104,8 +105,11 @@ class Model(object):
             cost = cost_function(y_test, predictions)
             print(cost)
         else:
-            self.model.fit(train_x[0:2000], train_y[0:2000])
+            self.model.fit(train_x[0:3500], train_y[0:3500])
             params = self.model.kernel_.get_params()  # Returns tuned parameters after fitting the model
+
+        print("GPML kernel: %s" % self.model.kernel_)
+        print("Log-marginal-likelihood: %.3f" % self.model.log_marginal_likelihood(self.model.kernel_.theta))
 
         pass
 
